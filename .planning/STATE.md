@@ -3,8 +3,8 @@
 ## Posición actual
 
 - **Milestone**: 1 — MVP Producción
-- **Fase activa**: 3 — Handover a Humano
-- **Estado**: Fase 2 Completada
+- **Fase activa**: 4 — Dashboard
+- **Estado**: Fase 3 Completada
 
 ## Decisiones tomadas
 

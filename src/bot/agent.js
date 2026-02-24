@@ -11,6 +11,7 @@ import { handlePrecios } from './handlers/precios.js';
 import { handleReserva } from './handlers/reserva.js';
 import { handleSaludo } from './handlers/saludo.js';
 import { handleDesconocido } from './handlers/desconocido.js';
+import { initiateHandover } from './handover.js';
 
 const HANDLERS = {
     DISPONIBILIDAD: handleDisponibilidad,
@@ -129,17 +130,11 @@ class WhatsAppAgent {
 
             // 11. Handle handover
             if (result.handover) {
-                await prisma.conversacion.update({
-                    where: { id: conversacion.id },
-                    data: { estado: 'HUMANO' }
-                });
-
                 if (result.respuesta) {
                     await this._sendAndSave(from, result.respuesta, tenant, conversacion);
                 }
 
-                const handoverMsg = fillTemplate('HANDOVER_AVISO');
-                await this._sendAndSave(from, handoverMsg, tenant, conversacion);
+                await initiateHandover(conversacion, tenant, contenido);
                 logger.info('Conversation handed over to human', { conversacionId: conversacion.id });
                 return;
             }
@@ -188,12 +183,7 @@ class WhatsAppAgent {
     }
 
     async _handover(conversacion, tenant, from) {
-        await prisma.conversacion.update({
-            where: { id: conversacion.id },
-            data: { estado: 'HUMANO' }
-        });
-        const msg = fillTemplate('HANDOVER_AVISO');
-        await this._sendAndSave(from, msg, tenant, conversacion);
+        await initiateHandover(conversacion, tenant, 'Bot desactivado — handover directo');
     }
 }
 

@@ -17,6 +17,8 @@ model Tenant {
   horario_inicio       String         @default("00:00")
   horario_fin          String         @default("23:59")
   activo               Boolean        @default(true)
+  telegram_chat_id     String?
+  telegram_bot_token   String?
   created_at           DateTime       @default(now())
   updated_at           DateTime       @updatedAt
   agentes              Agente[]
@@ -48,19 +50,22 @@ enum RolAgente {
 }
 
 model Conversacion {
-  id                String       @id @default(uuid()) @db.Uuid
-  tenant_id         String       @db.Uuid
-  tenant            Tenant       @relation(fields: [tenant_id], references: [id])
-  whatsapp_contact  String
-  contact_name      String?
-  estado            EstadoConv
-  agente_id         String?      @db.Uuid
-  agente            Agente?      @relation(fields: [agente_id], references: [id])
-  ultimo_mensaje_at DateTime
-  created_at        DateTime     @default(now())
-  updated_at        DateTime     @updatedAt
-  mensajes          Mensaje[]
-  cola_espera       ColaEspera[]
+  id                    String       @id @default(uuid()) @db.Uuid
+  tenant_id             String       @db.Uuid
+  tenant                Tenant       @relation(fields: [tenant_id], references: [id])
+  whatsapp_contact      String
+  contact_name          String?
+  estado                EstadoConv
+  agente_id             String?      @db.Uuid
+  agente                Agente?      @relation(fields: [agente_id], references: [id])
+  ultimo_mensaje_at     DateTime
+  handover_at           DateTime?
+  handover_resolved_at  DateTime?
+  handover_resolution   String?
+  created_at            DateTime     @default(now())
+  updated_at            DateTime     @updatedAt
+  mensajes              Mensaje[]
+  cola_espera           ColaEspera[]
 
   @@index([tenant_id, estado])
   @@map("conversaciones")

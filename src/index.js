@@ -9,6 +9,9 @@ import prisma from './db/prisma.js';
 import redis from './db/redis.js';
 import { healthRouter } from './api/health.js';
 import { webhookRouter } from './webhook/router.js';
+import { telegramWebhookRouter } from './api/telegram-webhook.js';
+import { queueRouter } from './api/queue.js';
+import { handoverRouter } from './api/handover.js';
 import './webhook/processor.js';
 
 const app = express();
@@ -23,6 +26,9 @@ app.use('/webhook', webhookRouter);
 
 app.use(express.json({ limit: '10mb' }));
 
+app.use('/api', telegramWebhookRouter);
+app.use('/api', queueRouter);
+app.use('/api', handoverRouter);
 app.use('/api', apiLimiter);
 
 app.use(errorHandler);

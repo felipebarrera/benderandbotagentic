@@ -1,0 +1,63 @@
+version: '3.9'
+
+networks:
+  moteland_net:
+    name: moteland_net
+    driver: bridge
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: moteland_whatsapp
+    ports:
+      - "5432:5432"
+    networks:
+      - moteland_net
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - moteland_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  wa-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: wa-api
+    ports:
+      - "3001:3001"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/moteland_whatsapp?schema=public
+      - REDIS_URL=redis://redis:6379
+      - PORT=3001
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - moteland_net
+
+volumes:
+  pg_data:

@@ -3,8 +3,8 @@
 ## Posición actual
 
 - **Milestone**: 1 — MVP Producción
-- **Fase activa**: 2 — Procesamiento de Mensajes y Worker
-- **Estado**: Fase 1 Completada
+- **Fase activa**: 3 — Handover a Humano
+- **Estado**: Fase 2 Completada
 
 ## Decisiones tomadas
 

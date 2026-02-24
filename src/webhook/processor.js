@@ -2,6 +2,7 @@ import { prisma } from '../db/prisma.js';
 import { logger } from '../config/logger.js';
 import config from '../config/index.js';
 import { Worker } from 'bullmq';
+import { whatsappAgent } from '../bot/agent.js';
 
 export const extractMessages = (payload) => {
     const messages = [];
@@ -102,14 +103,41 @@ export const saveMessage = async (msgData, tenant) => {
 };
 
 export const worker = new Worker('message-processing', async job => {
+    const start = Date.now();
     const { payload, tenant } = job.data;
     if (!tenant) return;
 
     const msgs = extractMessages(payload);
     for (const m of msgs) {
         await saveMessage(m, tenant);
+
+        // Process with WhatsApp Agent (bot)
+        if (tenant.activo && m.message.type === 'text') {
+            const rawMessage = {
+                from: m.message.from,
+                id: m.message.id,
+                text: m.message.text,
+                body: m.message.text?.body,
+                contact_name: m.contact?.profile?.name || null
+            };
+            await whatsappAgent.process(rawMessage, tenant);
+        }
     }
-}, { connection: { url: config.redis.url } });
+
+    const duration = Date.now() - start;
+    logger.info('Job completed', { jobId: job.id, messageCount: msgs.length, duration });
+}, {
+    connection: { url: config.redis.url },
+    concurrency: 5
+});
+
+worker.on('completed', (job) => {
+    logger.info('Worker job completed', { jobId: job.id });
+});
+
+worker.on('failed', (job, err) => {
+    logger.error('Worker job failed', { jobId: job?.id, error: err.message, attempts: job?.attemptsMade });
+});
 
 worker.on('error', err => {
     logger.error('Worker error', { error: err.message });

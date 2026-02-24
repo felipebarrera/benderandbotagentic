@@ -43,6 +43,9 @@ export const config = {
     jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
     port: process.env.PORT || 3001
   },
+  moteland: {
+    apiUrl: process.env.MOTELAND_API_URL || 'http://motelmulti:3000'
+  },
   log: {
     level: process.env.LOG_LEVEL || 'info'
   }

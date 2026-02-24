@@ -86,9 +86,12 @@ model Mensaje {
   direccion           DireccionMsg
   tipo                TipoMsg
   contenido           String
+  intent_detected     String?
   procesado           Boolean      @default(false)
   created_at          DateTime     @default(now())
 
+  @@index([conversacion_id, created_at])
+  @@index([tenant_id, created_at])
   @@map("mensajes")
 }
 

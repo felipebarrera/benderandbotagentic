@@ -9,9 +9,7 @@ import prisma from './db/prisma.js';
 import redis from './db/redis.js';
 import { healthRouter } from './api/health.js';
 import { webhookRouter } from './webhook/router.js';
-import { telegramWebhookRouter } from './api/telegram-webhook.js';
-import { queueRouter } from './api/queue.js';
-import { handoverRouter } from './api/handover.js';
+import { apiRouter } from './api/router.js';
 import './webhook/processor.js';
 
 const app = express();
@@ -21,16 +19,18 @@ app.use(cors({
     origin: process.env.NODE_ENV === 'production' ? ['https://moteland.cl'] : '*'
 }));
 
+// Webhook routes (before JSON body parser for HMAC)
 app.use(healthRouter);
 app.use('/webhook', webhookRouter);
 
+// JSON body parser
 app.use(express.json({ limit: '10mb' }));
 
-app.use('/api', telegramWebhookRouter);
-app.use('/api', queueRouter);
-app.use('/api', handoverRouter);
+// API routes (centralized router)
 app.use('/api', apiLimiter);
+app.use('/api', apiRouter);
 
+// Error handler
 app.use(errorHandler);
 
 const server = app.listen(config.api.port, () => {

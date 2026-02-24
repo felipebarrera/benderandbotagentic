@@ -3,8 +3,8 @@
 ## Posición actual
 
 - **Milestone**: 1 — MVP Producción
-- **Fase activa**: 4 — Dashboard
-- **Estado**: Fase 3 Completada
+- **Fase activa**: 5 — Dashboard React
+- **Estado**: Fase 4 Completada
 
 ## Decisiones tomadas
 

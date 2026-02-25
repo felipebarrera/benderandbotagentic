@@ -6,16 +6,20 @@ import config from '../config/index.js';
 import { fillTemplate } from '../whatsapp/templates.js';
 import { addNotificationJob, addHandoverJob } from '../queue/index.js';
 import { invalidateHistoryCache } from './contextBuilder.js';
+import { emitToTenant } from '../socket/index.js';
 
 export const initiateHandover = async (conversacion, tenant, mensajeTrigger) => {
     // 1. Change conversation state to HUMANO
-    await prisma.conversacion.update({
+    const updatedConv = await prisma.conversacion.update({
         where: { id: conversacion.id },
         data: {
             estado: 'HUMANO',
             handover_at: new Date()
-        }
+        },
+        include: { agente: true }
     });
+
+    emitToTenant(tenant.id, 'conversation_update', updatedConv);
 
     // 2. Add to wait queue
     await prisma.colaEspera.create({
@@ -31,7 +35,7 @@ export const initiateHandover = async (conversacion, tenant, mensajeTrigger) => 
     await sendTextMessage(conversacion.whatsapp_contact, aviso, tenant.whatsapp_phone_id, config.whatsapp.token);
 
     // Save outgoing message
-    await prisma.mensaje.create({
+    const newMsg = await prisma.mensaje.create({
         data: {
             conversacion_id: conversacion.id,
             tenant_id: tenant.id,
@@ -43,6 +47,8 @@ export const initiateHandover = async (conversacion, tenant, mensajeTrigger) => 
         }
     });
     await invalidateHistoryCache(conversacion.id);
+
+    emitToTenant(tenant.id, 'new_message', newMsg);
 
     // 4. Enqueue notification job for Telegram
     await addNotificationJob({
@@ -76,14 +82,17 @@ export const resolveHandover = async (conversacionId, resolucion) => {
     await prisma.colaEspera.deleteMany({ where: { conversacion_id: conversacionId } });
 
     if (resolucion === 'timeout') {
-        await prisma.conversacion.update({
+        const updatedConv = await prisma.conversacion.update({
             where: { id: conversacionId },
             data: {
                 estado: 'BOT',
                 handover_resolved_at: new Date(),
                 handover_resolution: 'timeout'
-            }
+            },
+            include: { agente: true }
         });
+
+        emitToTenant(conversacion.tenant_id, 'conversation_update', updatedConv);
 
         // Import here to avoid circular deps
         const { notifyTimeout } = await import('../notifications/index.js');
@@ -91,22 +100,28 @@ export const resolveHandover = async (conversacionId, resolucion) => {
 
         logger.info('Handover timeout resolved', { conversacionId });
     } else if (resolucion === 'tomado') {
-        await prisma.conversacion.update({
+        const updatedConv = await prisma.conversacion.update({
             where: { id: conversacionId },
             data: {
                 handover_resolved_at: new Date(),
                 handover_resolution: 'tomado'
-            }
+            },
+            include: { agente: true }
         });
+
+        emitToTenant(conversacion.tenant_id, 'conversation_update', updatedConv);
     } else if (resolucion === 'cerrado') {
-        await prisma.conversacion.update({
+        const updatedConv = await prisma.conversacion.update({
             where: { id: conversacionId },
             data: {
                 estado: 'CERRADA',
                 handover_resolved_at: new Date(),
                 handover_resolution: 'cerrado'
-            }
+            },
+            include: { agente: true }
         });
+
+        emitToTenant(conversacion.tenant_id, 'conversation_update', updatedConv);
     }
 
     // Cleanup Redis

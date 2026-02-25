@@ -5,6 +5,7 @@ import { sendTextMessage } from '../whatsapp/sender.js';
 import config from '../config/index.js';
 import { logger } from '../config/logger.js';
 import { invalidateHistoryCache } from '../bot/contextBuilder.js';
+import { emitToTenant } from '../socket/index.js';
 
 export const conversationsRouter = Router();
 conversationsRouter.use(authMiddleware);
@@ -102,8 +103,11 @@ conversationsRouter.patch('/conversations/:id', async (req, res) => {
 
     const updated = await prisma.conversacion.update({
         where: { id: req.params.id },
-        data: allowedUpdates
+        data: allowedUpdates,
+        include: { agente: true }
     });
+
+    emitToTenant(req.tenantId, 'conversation_update', updated);
 
     res.json(updated);
 });
@@ -133,7 +137,14 @@ conversationsRouter.post('/conversations/:id/messages', async (req, res) => {
     });
 
     await invalidateHistoryCache(conv.id);
-    await prisma.conversacion.update({ where: { id: conv.id }, data: { ultimo_mensaje_at: new Date() } });
+    const updatedConv = await prisma.conversacion.update({
+        where: { id: conv.id },
+        data: { ultimo_mensaje_at: new Date() },
+        include: { agente: true }
+    });
+
+    emitToTenant(req.tenantId, 'new_message', msg);
+    emitToTenant(req.tenantId, 'conversation_update', updatedConv);
 
     res.status(201).json(msg);
 });
@@ -146,6 +157,12 @@ conversationsRouter.delete('/conversations/:id', authMiddleware, async (req, res
     });
     if (!conv) return res.status(404).json({ error: 'Conversación no encontrada' });
 
-    await prisma.conversacion.update({ where: { id: req.params.id }, data: { estado: 'CERRADA' } });
+    const updatedConv = await prisma.conversacion.update({
+        where: { id: req.params.id },
+        data: { estado: 'CERRADA' },
+        include: { agente: true }
+    });
+
+    emitToTenant(req.tenantId, 'conversation_update', updatedConv);
     res.json({ success: true });
 });

@@ -60,6 +60,7 @@ export const saveMessage = async (msgData, tenant) => {
         orderBy: { created_at: 'desc' }
     });
 
+    let isNewConv = false;
     if (!conversacion) {
         conversacion = await prisma.conversacion.create({
             data: {
@@ -70,17 +71,26 @@ export const saveMessage = async (msgData, tenant) => {
                 ultimo_mensaje_at: timestamp
             }
         });
+        isNewConv = true;
     } else {
-        await prisma.conversacion.update({
+        conversacion = await prisma.conversacion.update({
             where: { id: conversacion.id },
             data: {
                 ultimo_mensaje_at: timestamp,
                 ...(name && !conversacion.contact_name ? { contact_name: name } : {})
-            }
+            },
+            include: { agente: true }
         });
     }
 
     try {
+        const { emitToTenant } = await import('../socket/index.js');
+        if (isNewConv) {
+            emitToTenant(tenant.id, 'conversation_update', conversacion);
+        } else {
+            emitToTenant(tenant.id, 'conversation_update', conversacion);
+        }
+
         const savedMessage = await prisma.mensaje.create({
             data: {
                 conversacion_id: conversacion.id,
@@ -92,6 +102,12 @@ export const saveMessage = async (msgData, tenant) => {
                 created_at: timestamp
             }
         });
+
+        // Wait, bot.agent emits new_message but if a message is a media type or not text, agent doesn't process it.
+        // It's safer to let the worker emit new_message, EXCEPT agent also creates new message entries.
+        // I will emit 'new_message' here and the frontend can deduplicate by ID.
+        emitToTenant(tenant.id, 'new_message', savedMessage);
+
         return savedMessage;
     } catch (err) {
         if (err.code === 'P2002') {

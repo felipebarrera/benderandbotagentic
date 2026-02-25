@@ -10,6 +10,8 @@ import redis from './db/redis.js';
 import { healthRouter } from './api/health.js';
 import { webhookRouter } from './webhook/router.js';
 import { apiRouter } from './api/router.js';
+import { handoverRouter } from './api/handover.js';
+import { initSocket } from './socket/index.js';
 import './webhook/processor.js';
 
 const app = express();
@@ -36,6 +38,9 @@ app.use(errorHandler);
 const server = app.listen(config.api.port, () => {
     logger.info(`🚀 Moteland WA API corriendo en puerto ${config.api.port}`);
 });
+
+// Initialize Socket.io with the HTTP server
+initSocket(server);
 
 process.on('SIGTERM', async () => {
     logger.info('SIGTERM received. Shutting down gracefully.');

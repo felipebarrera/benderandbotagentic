@@ -12,6 +12,7 @@ import { handleReserva } from './handlers/reserva.js';
 import { handleSaludo } from './handlers/saludo.js';
 import { handleDesconocido } from './handlers/desconocido.js';
 import { initiateHandover } from './handover.js';
+import { emitToTenant } from '../socket/index.js';
 
 const HANDLERS = {
     DISPONIBILIDAD: handleDisponibilidad,
@@ -73,7 +74,7 @@ class WhatsAppAgent {
 
             // 4. Save incoming message (if not already saved by webhook processor)
             try {
-                await prisma.mensaje.create({
+                const newMsg = await prisma.mensaje.create({
                     data: {
                         conversacion_id: conversacion.id,
                         tenant_id: tenant.id,
@@ -85,6 +86,7 @@ class WhatsAppAgent {
                     }
                 });
                 await invalidateHistoryCache(conversacion.id);
+                emitToTenant(tenant.id, 'new_message', newMsg);
             } catch (err) {
                 if (err.code !== 'P2002') throw err;
                 // Duplicate — already saved by webhook processor
@@ -163,7 +165,7 @@ class WhatsAppAgent {
     async _sendAndSave(to, text, tenant, conversacion) {
         const result = await sendTextMessage(to, text, tenant.whatsapp_phone_id, config.whatsapp.token);
 
-        await prisma.mensaje.create({
+        const newMsg = await prisma.mensaje.create({
             data: {
                 conversacion_id: conversacion.id,
                 tenant_id: tenant.id,
@@ -176,10 +178,14 @@ class WhatsAppAgent {
         });
 
         await invalidateHistoryCache(conversacion.id);
-        await prisma.conversacion.update({
+        const updatedConv = await prisma.conversacion.update({
             where: { id: conversacion.id },
-            data: { ultimo_mensaje_at: new Date() }
+            data: { ultimo_mensaje_at: new Date() },
+            include: { agente: true }
         });
+
+        emitToTenant(tenant.id, 'new_message', newMsg);
+        emitToTenant(tenant.id, 'conversation_update', updatedConv);
     }
 
     async _handover(conversacion, tenant, from) {

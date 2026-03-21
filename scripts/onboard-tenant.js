@@ -2,18 +2,19 @@ import inquirer from 'inquirer';
 import bcrypt from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
+import { getDashboardUrl } from '../src/utils/url.js';
 
 const prisma = new PrismaClient();
 
 async function main() {
-    console.log('🚀 Moteland - Asistente de Onboarding de Tenants\n');
+    console.log('🚀 BenderAndos - Asistente de Onboarding de Tenants\n');
 
     try {
         const answers = await inquirer.prompt([
             {
                 type: 'input',
                 name: 'nombre',
-                message: 'Nombre del Tenant (Ej: Motel Paradiso):',
+                message: 'Nombre del Tenant (Ej: Ferreteria Lupita):',
                 validate: input => input.trim() !== '' ? true : 'El nombre es requerido'
             },
             {
@@ -56,50 +57,49 @@ async function main() {
         console.log('\n⏳ Creando tenant y cifrando credenciales...');
 
         const passwordHash = await bcrypt.hash(answers.admin_password, 12);
-        const verifyToken = crypto.randomBytes(16).toString('hex'); // Token interno para verificar webhook si hay multiples PBs
+        const verifyToken  = crypto.randomBytes(16).toString('hex');
 
-        // Prisma Transaction para asegurar atomicidad
         const result = await prisma.$transaction(async (tx) => {
-            // 1. Crear Tenant
             const newTenant = await tx.tenant.create({
                 data: {
-                    nombre: answers.nombre,
-                    whatsapp_number: answers.whatsapp_number,
+                    nombre:            answers.nombre,
+                    whatsapp_number:   answers.whatsapp_number,
                     whatsapp_phone_id: answers.whatsapp_phone_id,
-                    modo_bot: true,
-                    activo: true,
-                    telegram_chat_id: answers.telegram_chat_id || null,
+                    modo_bot:          true,
+                    activo:            true,
+                    telegram_chat_id:  answers.telegram_chat_id || null,
                 }
             });
 
-            // 2. Crear Admin
             const newAdmin = await tx.agente.create({
                 data: {
-                    tenant_id: newTenant.id,
-                    email: answers.admin_email,
+                    tenant_id:     newTenant.id,
+                    email:         answers.admin_email,
                     password_hash: passwordHash,
-                    nombre: answers.admin_nombre,
-                    rol: 'ADMIN',
-                    online: false
+                    nombre:        answers.admin_nombre,
+                    rol:           'ADMIN',
+                    online:        false
                 }
             });
 
             return { tenant: newTenant, admin: newAdmin };
         });
 
+        // Sin req — CLI usa APP_URL del .env o localhost como fallback
+        const dashboardUrl = getDashboardUrl();
+
         console.log('\n✅ ¡Tenant creado exitosamente!\n');
         console.log('--- DETALLES ---');
         console.log(`🏢 ID Tenant: ${result.tenant.id}`);
         console.log(`👤 ID Admin:  ${result.admin.id}`);
-        console.log(`🌐 Acceso URL: https://admin.moteland.cl`);
+        console.log(`🌐 Acceso:    ${dashboardUrl}`);
         console.log(`📧 Login:     ${answers.admin_email}`);
         console.log('----------------\n');
-        console.log('Para conectar el webhook a Meta, usa este comando y asegúrate de que Meta envíe al mismo servidor de API.');
 
     } catch (error) {
-        console.error('\n❌ Hubo un error al crear el tenant:', error.message);
+        console.error('\n❌ Error al crear el tenant:', error.message);
         if (error.code === 'P2002') {
-            console.error('El número de WhatsApp o el email ya están registrados en otro tenant.');
+            console.error('El número de WhatsApp o el email ya están registrados.');
         }
     } finally {
         await prisma.$disconnect();

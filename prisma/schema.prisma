@@ -45,6 +45,7 @@ model Agente {
 }
 
 enum RolAgente {
+  SUPERADMIN
   ADMIN
   AGENTE
 }

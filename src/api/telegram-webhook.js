@@ -4,7 +4,7 @@ import { logger } from '../config/logger.js';
 
 export const telegramWebhookRouter = Router();
 
-telegramWebhookRouter.post('/telegram/webhook', async (req, res) => {
+telegramWebhookRouter.post('/tg/webhook', async (req, res) => {
     // Respond 200 immediately as Telegram requires fast responses
     res.sendStatus(200);
 

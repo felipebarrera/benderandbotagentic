@@ -7,8 +7,20 @@ async function seed() {
     console.log('🌱 Seeding database with Multi-Tenant setup...');
 
     const passwordHash = await bcrypt.hash('admin123', 12);
+    const superadminHash = await bcrypt.hash('superadmin123', 12);
 
     const tenantsData = [
+        {
+            nombre: 'Moteland System (Admin)',
+            whatsapp_number: '+56900000000',
+            whatsapp_phone_id: 'SYSTEM_PHONE_ID',
+            modo_bot: false,
+            prompt_personalizado: 'System Tenant',
+            telegram_chat_id: null,
+            activo: true,
+            admin: { email: 'superadmin@moteland.cl', nombre: 'Super Admin', rol: 'SUPERADMIN', customHash: superadminHash },
+            conversations: []
+        },
         {
             nombre: 'Motel A (Premium)',
             whatsapp_number: '+56900000001',
@@ -17,7 +29,7 @@ async function seed() {
             prompt_personalizado: 'Eres el asistente del Motel A.',
             telegram_chat_id: '12345',
             activo: true,
-            admin: { email: 'admin@motela.cl', nombre: 'Admin A' },
+            admin: { email: 'admin@motela.cl', nombre: 'Admin A', rol: 'ADMIN', customHash: passwordHash },
             conversations: [
                 { contact: '+56911111111', name: 'Juan Pérez (A)', estado: 'CERRADA', handover: false },
                 { contact: '+56922222222', name: 'María López (A)', estado: 'BOT', handover: false }
@@ -31,23 +43,10 @@ async function seed() {
             prompt_personalizado: 'Eres el asistente del Motel B. Responde rápido.',
             telegram_chat_id: '67890',
             activo: true,
-            admin: { email: 'admin@motelb.cl', nombre: 'Admin B' },
+            admin: { email: 'admin@motelb.cl', nombre: 'Admin B', rol: 'ADMIN', customHash: passwordHash },
             conversations: [
                 { contact: '+56933333333', name: 'Carlos Ruiz (B)', estado: 'BOT', handover: false },
                 { contact: '+56944444444', name: 'Ana Torres (B)', estado: 'HUMANO', handover: true }
-            ]
-        },
-        {
-            nombre: 'Repuestos C',
-            whatsapp_number: '+56900000003',
-            whatsapp_phone_id: 'TEST_PHONE_ID_C',
-            modo_bot: false, // Solo atencion humana
-            prompt_personalizado: 'Eres Repuestos C.',
-            telegram_chat_id: '11111',
-            activo: true,
-            admin: { email: 'admin@repuestosc.cl', nombre: 'Admin C' },
-            conversations: [
-                { contact: '+56955555555', name: 'Pedro Soto (C)', estado: 'HUMANO', handover: false }
             ]
         }
     ];
@@ -76,9 +75,9 @@ async function seed() {
             data: {
                 tenant_id: tenant.id,
                 email: tData.admin.email,
-                password_hash: passwordHash,
+                password_hash: tData.admin.customHash,
                 nombre: tData.admin.nombre,
-                rol: 'ADMIN'
+                rol: tData.admin.rol
             }
         });
 
@@ -118,7 +117,7 @@ async function seed() {
         }
     }
 
-    console.log('✅ Seed completed: 3 isolated tenants seeded for data leak testing');
+    console.log('✅ Seed completed: Superadmin and tenants seeded successfully.');
     await prisma.$disconnect();
 }
 

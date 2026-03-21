@@ -13,6 +13,25 @@ import { handleSaludo } from './handlers/saludo.js';
 import { handleDesconocido } from './handlers/desconocido.js';
 import { initiateHandover } from './handover.js';
 import { emitToTenant } from '../socket/index.js';
+import OpenAI from 'openai';
+
+// ─── LLM CLIENT — desde config, no hardcodeado ───────────────────────────────
+// Ollama expone /v1 compatible con OpenAI SDK.
+// Para cambiar a OpenRouter o OpenAI: solo cambiar variables de entorno.
+//
+// .env ahora:       LLM_PROVIDER=ollama
+//                   LLM_BASE_URL=http://host.docker.internal:11434/v1
+//                   LLM_MODEL=llama3.1:8b
+//
+// .env futuro OR:   LLM_PROVIDER=openrouter
+//                   LLM_BASE_URL=https://openrouter.ai/api/v1
+//                   LLM_API_KEY=sk-or-v1-...
+//                   LLM_MODEL=meta-llama/llama-3.1-8b-instruct
+// ─────────────────────────────────────────────────────────────────────────────
+const llmClient = new OpenAI({
+    baseURL: config.llm.baseURL,
+    apiKey: config.llm.apiKey,
+});
 
 const HANDLERS = {
     DISPONIBILIDAD: handleDisponibilidad,
@@ -114,6 +133,7 @@ class WhatsAppAgent {
             const intent = await detectIntent(contenido, fechaHoy);
             logger.info('Intent detected', { intent: intent.intent, conversacionId: conversacion.id });
 
+
             // 9. Handle DESPEDIDA specially
             if (intent.intent === 'DESPEDIDA') {
                 const texto = fillTemplate('DESPEDIDA');
@@ -127,7 +147,9 @@ class WhatsAppAgent {
                 tenant,
                 conversacion,
                 mensaje: contenido,
-                entidades: intent
+                entidades: intent,
+                llm: llmClient,              // ← pasamos el cliente al handler
+                llmModel: config.llm.model,  // ← y el modelo
             });
 
             // 11. Handle handover
@@ -135,7 +157,6 @@ class WhatsAppAgent {
                 if (result.respuesta) {
                     await this._sendAndSave(from, result.respuesta, tenant, conversacion);
                 }
-
                 await initiateHandover(conversacion, tenant, contenido);
                 logger.info('Conversation handed over to human', { conversacionId: conversacion.id });
                 return;
@@ -151,8 +172,6 @@ class WhatsAppAgent {
 
         } catch (err) {
             logger.error('WhatsAppAgent.process failed', { from, tenantId: tenant.id, error: err.message, stack: err.stack });
-
-            // Fallback: handover to human
             try {
                 const errorMsg = fillTemplate('ERROR_GENERAL');
                 await sendTextMessage(from, errorMsg, tenant.whatsapp_phone_id, config.whatsapp.token);

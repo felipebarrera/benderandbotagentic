@@ -21,8 +21,15 @@ export const authMiddleware = (req, res, next) => {
 };
 
 export const adminOnly = (req, res, next) => {
-    if (req.agentRol !== 'ADMIN') {
-        return res.status(403).json({ error: 'Se requiere rol ADMIN' });
+    if (req.agentRol !== 'ADMIN' && req.agentRol !== 'SUPERADMIN') {
+        return res.status(403).json({ error: 'Se requiere rol ADMIN o SUPERADMIN' });
+    }
+    next();
+};
+
+export const superAdminOnly = (req, res, next) => {
+    if (req.agentRol !== 'SUPERADMIN') {
+        return res.status(403).json({ error: 'Se requiere rol SUPERADMIN' });
     }
     next();
 };

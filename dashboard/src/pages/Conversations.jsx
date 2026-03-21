@@ -3,7 +3,7 @@ import api from '../services/api';
 import useSocket from '../hooks/useSocket';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Send, UserCircle, Bot, HandMetal, CheckCircle } from 'lucide-react';
+import { Send, UserCircle, Bot, HandMetal, CheckCircle, MessageCircle } from 'lucide-react';
 
 export default function Conversations() {
     const [conversations, setConversations] = useState([]);
@@ -121,7 +121,12 @@ export default function Conversations() {
 
                 <div style={{ flex: 1, overflowY: 'auto' }}>
                     {loadingConv ? <p style={{ padding: '20px', textAlign: 'center' }}>Cargando...</p> :
-                        conversations.map(conv => (
+                        conversations.length === 0 ? (
+                            <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                <MessageCircle size={32} style={{ marginBottom: '12px', opacity: 0.5 }} />
+                                <p style={{ margin: 0, fontSize: '0.9rem' }}>No hay chats activos</p>
+                            </div>
+                        ) : conversations.map(conv => (
                             <div
                                 key={conv.id}
                                 onClick={() => setSelectedConv(conv)}

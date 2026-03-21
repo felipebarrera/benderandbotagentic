@@ -9,10 +9,12 @@ import prisma from './db/prisma.js';
 import redis from './db/redis.js';
 import { healthRouter } from './api/health.js';
 import { webhookRouter } from './webhook/router.js';
+import { telegramWebhookRouter } from './api/telegram-webhook.js';
 import { apiRouter } from './api/router.js';
 import { handoverRouter } from './api/handover.js';
 import { initSocket } from './socket/index.js';
 import './webhook/processor.js';
+import '../worker/index.js';
 
 const app = express();
 
@@ -27,6 +29,7 @@ app.use('/webhook', webhookRouter);
 
 // JSON body parser
 app.use(express.json({ limit: '10mb' }));
+app.use(telegramWebhookRouter);
 
 // API routes (centralized router)
 app.use('/api', apiLimiter);

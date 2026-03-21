@@ -1,24 +1,24 @@
-version: '3.9'
+#version: '3.9'
 
 networks:
-  moteland_net:
-    name: moteland_net
+  benderandos_bot_net:
+    name: benderandos_bot_net
     driver: bridge
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: postgres
+    container_name: benderandos_bot_postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: moteland_whatsapp
+      POSTGRES_DB: benderandos_bot
     ports:
-      - "5432:5432"
+      - "5434:5432"       # ERP usa 5432, bot usa 5434
     networks:
-      - moteland_net
+      - benderandos_bot_net
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - bot_pg_data:/var/lib/postgresql/data
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 5s
@@ -27,11 +27,11 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: redis
+    container_name: benderandos_bot_redis
     ports:
-      - "6379:6379"
+      - "6381:6379"       # ERP usa 6379, bot usa 6381
     networks:
-      - moteland_net
+      - benderandos_bot_net
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
@@ -42,12 +42,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
-    container_name: wa-api
+    container_name: benderandos_bot_api
     ports:
       - "3001:3001"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/moteland_whatsapp?schema=public
-      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://postgres:postgres@benderandos_bot_postgres:5432/benderandos_bot?schema=public
+      - REDIS_URL=redis://benderandos_bot_redis:6379
       - PORT=3001
     env_file:
       - .env
@@ -57,21 +57,23 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - moteland_net
+      - benderandos_bot_net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   dashboard:
     build:
       context: ./dashboard
       dockerfile: Dockerfile.dashboard
-    container_name: dashboard
+    container_name: benderandos_bot_dashboard
     ports:
-      - "80:80"
+      - "8080:80"         # ERP usa 8000, dashboard bot usa 8080
     depends_on:
       wa-api:
         condition: service_started
     restart: unless-stopped
     networks:
-      - moteland_net
+      - benderandos_bot_net
 
 volumes:
-  pg_data:
+  bot_pg_data:

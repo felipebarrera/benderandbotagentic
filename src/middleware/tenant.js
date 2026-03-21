@@ -15,6 +15,7 @@ export const resolveTenant = async (req, res, next) => {
             body.entry[0].changes[0].value.metadata
         ) {
             phoneNumber = body.entry[0].changes[0].value.metadata.display_phone_number;
+            if (phoneNumber && !phoneNumber.startsWith("+")) phoneNumber = "+" + phoneNumber;
         }
 
         if (!phoneNumber) {

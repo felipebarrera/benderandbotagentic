@@ -1,4 +1,3 @@
-import { prisma } from '../db/prisma.js';
 import { redis } from '../db/redis.js';
 
 export const getConversationHistory = async (conversacionId, limit = 5) => {
@@ -33,6 +32,7 @@ export const invalidateHistoryCache = async (conversacionId) => {
     await redis.del(`conv:history:${conversacionId}`);
 };
 
+
 export const buildContext = (intent, entidades, pmsData) => {
     const parts = [];
 
@@ -41,7 +41,7 @@ export const buildContext = (intent, entidades, pmsData) => {
             const hab = pmsData.map(h => `${h.tipo || h.nombre}: $${h.precio || h.precio_base}`).join(', ');
             parts.push(`Habitaciones disponibles: ${hab}`);
         } else {
-            parts.push('No hay habitaciones disponibles para la fecha solicitada.');
+            parts.push('No hay habitaciones disponibles for la fecha solicitada.');
         }
     }
 

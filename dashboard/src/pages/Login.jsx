@@ -42,10 +42,8 @@ export default function Login() {
             }}>
                 <div style={{ marginBottom: '32px' }}>
                     <div style={{
-                        fontSize: '3rem',
-                        marginBottom: '10px'
-                    }}>🏨</div>
-                    <h1 style={{ color: 'var(--primary)', marginBottom: '8px' }}>Moteland</h1>
+                    }}>🏢</div>
+                    <h1 style={{ color: 'var(--primary)', marginBottom: '8px' }}>Panel Empresa</h1>
                     <p style={{ color: 'var(--text-muted)' }}>Panel de Administración IA</p>
                 </div>
 
@@ -69,7 +67,7 @@ export default function Login() {
                         <input
                             type="email"
                             className="input"
-                            placeholder="admin@motel.cl"
+                            placeholder="admin@empresa.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required

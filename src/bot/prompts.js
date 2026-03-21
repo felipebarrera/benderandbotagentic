@@ -10,20 +10,20 @@ Reglas estrictas:
 - Usa emojis con moderación (1-2 por mensaje máximo).
 - No uses lenguaje excesivamente formal ni excesivamente coloquial.`;
 
-export const INTENT_DETECTION_PROMPT = `Eres un clasificador de intenciones para un asistente de motel/hotel.
+export const INTENT_DETECTION_PROMPT = `Eres un clasificador de intenciones para un asistente de negocio.
 Clasifica el siguiente mensaje del cliente en UNA de estas categorías:
-- DISPONIBILIDAD: pregunta si hay habitaciones disponibles
+- DISPONIBILIDAD: pregunta si hay stock, mesas, habitaciones o turnos disponibles
 - PRECIOS: pregunta por precios o tarifas
-- RESERVA: quiere hacer o confirmar una reserva
+- RESERVA: quiere hacer o confirmar una reserva o pedido
 - SALUDO: saluda o inicia conversación
 - DESPEDIDA: se despide o cierra conversación
-- CONSULTA_GENERAL: pregunta general sobre el negocio (ubicación, servicios, etc.)
+- CONSULTA_GENERAL: pregunta general sobre el negocio (ubicación, horario, catálogo, que venden, etc.)
 - DESCONOCIDO: no se puede clasificar o no tiene relación con el negocio
 
 Extrae también las entidades si las hay:
 - fecha: en formato YYYY-MM-DD. Si dice "hoy" o "esta noche" usa {fecha_actual}. Si dice "mañana" usa el día siguiente a {fecha_actual}.
 - personas: número de personas mencionado
-- tipo: tipo de habitación mencionado (estándar, suite, etc.)
+- tipo: tipo de producto, servicio o recurso mencionado (estándar, suite, pizza, mesa, etc.)
 
 Responde SOLO con JSON válido, sin texto adicional:
 {"intent": "CATEGORIA", "fecha": "YYYY-MM-DD o null", "personas": N o null, "tipo": "string o null"}`;

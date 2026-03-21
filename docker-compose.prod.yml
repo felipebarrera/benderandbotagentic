@@ -1,4 +1,4 @@
-version: '3.9'
+#version: '3.9'
 
 networks:
   moteland_prod_net:
@@ -12,7 +12,7 @@ services:
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-moteland_whatsapp}
     volumes:
       - pg_data_prod:/var/lib/postgresql/data
@@ -38,14 +38,11 @@ services:
     restart: always
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-moteland_whatsapp}?schema=public
-      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://postgres:postgres@moteland_postgres:5432/moteland_whatsapp?schema=public
+      - REDIS_URL=redis://moteland_redis:6379
       - PORT=3001
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - WHATSAPP_TOKEN=${WHATSAPP_TOKEN}
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+    env_file:
+      - .env
     depends_on:
       - postgres
       - redis

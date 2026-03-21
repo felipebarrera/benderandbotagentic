@@ -109,11 +109,11 @@ export default function Settings() {
                             rows="4"
                             value={config.prompt_personalizado || ''}
                             onChange={(e) => setConfig({ ...config, prompt_personalizado: e.target.value })}
-                            placeholder="Ej: Eres el asistente del Motel X. Responde siempre de forma amable..."
+                            placeholder="Ej: Eres el asistente de la Empresa X. Responde siempre de forma amable..."
                             style={{ padding: '16px', resize: 'vertical' }}
                         />
                         <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                            Define la personalidad del bot y reglas específicas de tu motel.
+                            Define la personalidad del bot y reglas específicas de tu empresa.
                         </p>
                     </div>
 

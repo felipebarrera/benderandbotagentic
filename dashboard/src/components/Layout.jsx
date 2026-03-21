@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LayoutDashboard, MessageCircle, Users, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, MessageCircle, Users, Settings, LogOut, Shield } from 'lucide-react';
 
 export default function Layout() {
     const { user, logout } = useAuth();
@@ -12,6 +12,10 @@ export default function Layout() {
         { path: '/agents', label: 'Agentes', icon: Users },
         { path: '/settings', label: 'Configuración', icon: Settings },
     ];
+
+    if (user?.rol === 'SUPERADMIN') {
+        navItems.push({ path: '/superadmin', label: 'Super Admin', icon: Shield });
+    }
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh' }}>
@@ -29,9 +33,9 @@ export default function Layout() {
                 zIndex: 50
             }}>
                 <div style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ fontSize: '2rem' }}>🏨</div>
+                    <div style={{ fontSize: '2rem' }}>🏢</div>
                     <div>
-                        <h2 style={{ fontSize: '1.2rem', color: 'var(--primary)', margin: 0 }}>Moteland</h2>
+                        <h2 style={{ fontSize: '1.2rem', color: 'var(--primary)', margin: 0 }}>Panel Empresa</h2>
                         <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>Panel IA</p>
                     </div>
                 </div>

@@ -9,12 +9,15 @@ import { dashboardRouter } from './dashboard.js';
 import { queueRouter } from './queue.js';
 import { handoverRouter } from './handover.js';
 import { telegramWebhookRouter } from './telegram-webhook.js';
+import superadminRouter from './superadmin.js';
+import { botConfigRouter } from './bot-config.js';
 
 export const apiRouter = Router();
 
 // Public routes (no auth)
 apiRouter.use(authRouter);
 apiRouter.use(telegramWebhookRouter);
+apiRouter.use(botConfigRouter);
 
 // Protected routes
 apiRouter.use(conversationsRouter);
@@ -23,5 +26,6 @@ apiRouter.use(tenantsRouter);
 apiRouter.use(dashboardRouter);
 apiRouter.use(queueRouter);
 apiRouter.use(handoverRouter);
+apiRouter.use('/superadmin', superadminRouter);
 
 export default apiRouter;

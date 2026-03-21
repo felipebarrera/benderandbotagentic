@@ -3,6 +3,5 @@ node_modules
 .env.*
 *.log
 .git
-prisma/migrations
 coverage/
 dist/

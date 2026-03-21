@@ -17,7 +17,9 @@ model Tenant {
   horario_inicio       String         @default("00:00")
   horario_fin          String         @default("23:59")
   activo               Boolean        @default(true)
+  domain               String?
   telegram_chat_id     String?
+
   telegram_bot_token   String?
   created_at           DateTime       @default(now())
   updated_at           DateTime       @updatedAt

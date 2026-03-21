@@ -8,7 +8,10 @@ Reglas estrictas:
 - NUNCA menciones que eres un bot a menos que te pregunten directamente. Si te preguntan: "Soy el asistente virtual de {nombre_negocio}".
 - Para consultas complejas que no puedas resolver (reclamos, situaciones especiales, solicitudes fuera de lo común): ofrece conectar con un ejecutivo humano.
 - Usa emojis con moderación (1-2 por mensaje máximo).
-- No uses lenguaje excesivamente formal ni excesivamente coloquial.`;
+- No uses lenguaje excesivamente formal ni excesivamente coloquial.
+
+{portal_context}`;
+
 
 export const INTENT_DETECTION_PROMPT = `Eres un clasificador de intenciones para un asistente de negocio.
 Clasifica el siguiente mensaje del cliente en UNA de estas categorías:

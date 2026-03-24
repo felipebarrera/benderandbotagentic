@@ -5,6 +5,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import { apiLimiter } from './middleware/rateLimit.js';
 import errorHandler from './middleware/errorHandler.js';
+import { testModeMiddleware } from './middleware/test-mode.middleware.js';
+import { contextExtractorMiddleware } from './middleware/context-extractor.middleware.js';
 import prisma from './db/prisma.js';
 import redis from './db/redis.js';
 import { healthRouter } from './api/health.js';
@@ -17,16 +19,17 @@ import './webhook/processor.js';
 import '../worker/index.js';
 
 const app = express();
-
 app.use(helmet());
 app.use(cors({
-    origin: process.env.NODE_ENV === 'production' ? ['https://moteland.cl'] : '*'
+    origin: process.env.NODE_ENV === 'production' ? ['https://webinc.cl'] : '*'
 }));
 
 // Webhook routes (before JSON body parser for HMAC)
 app.use(healthRouter);
 app.use('/webhook', webhookRouter);
 
+app.use(testModeMiddleware);
+app.use(contextExtractorMiddleware);
 // JSON body parser
 app.use(express.json({ limit: '10mb' }));
 app.use(telegramWebhookRouter);

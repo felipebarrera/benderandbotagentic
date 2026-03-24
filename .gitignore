@@ -53,6 +53,7 @@ docker-compose.yml
 docker-compose.*.yml
 .docker/
 .dockerignore
+Dockerfile.api
 docker/
 infra/certbot/
 
@@ -87,6 +88,9 @@ prisma/migration_lock.toml
 # ========== CARPETAS PERSONALES / IA ==========
 .gemini/
 docs/
+infra/
+prisma/
+scripts/
 .planning/
 .memory/
 tmp/

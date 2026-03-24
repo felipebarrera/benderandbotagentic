@@ -36,21 +36,32 @@ export const config = {
     centralNumber: process.env.WHATSAPP_CENTRAL_NUMBER || ""
   },
   llm: {
-    provider:    process.env.LLM_PROVIDER    || 'ollama',
-    baseURL:     process.env.LLM_BASE_URL    || 'http://host.docker.internal:11434/v1',
-    apiKey:      process.env.LLM_API_KEY     || 'ollama',
-    model:       process.env.LLM_MODEL       || 'llama3.1:8b',
+    provider: process.env.LLM_PROVIDER || 'ollama',
+    baseURL: process.env.LLM_BASE_URL || 'http://host.docker.internal:11434/v1',
+    apiKey: process.env.LLM_API_KEY || 'ollama',
+    model: process.env.LLM_MODEL || 'llama3.1:8b',
     temperature: parseFloat(process.env.LLM_TEMPERATURE || '0.7'),
-    maxTokens:   parseInt(process.env.LLM_MAX_TOKENS    || '1024'),
+    maxTokens: parseInt(process.env.LLM_MAX_TOKENS || '1024'),
   },
   api: {
-    internalSecret:   process.env.INTERNAL_API_SECRET,
-    jwtSecret:        process.env.JWT_SECRET,
+    internalSecret: process.env.INTERNAL_API_SECRET,
+    jwtSecret: process.env.JWT_SECRET,
     jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
-    port:             process.env.PORT || 3001
+    port: process.env.PORT || 3001
   },
   log: {
     level: process.env.LOG_LEVEL || 'info'
+  },
+  test: {
+    whatsapp: process.env.TEST_WHATSAPP_NUMBER || '+56986310619',
+    telegram: process.env.TEST_TELEGRAM_NUMBER || '+56928624559',
+    central: process.env.CENTRAL_PHONE_NUMBER || '+15550198023'
+  },
+
+  // Routing inteligente
+  routing: {
+    enabled: process.env.ROUTING_ENABLED !== 'false',
+    fallbackToRules: process.env.ROUTING_FALLBACK !== 'false'
   }
 };
 

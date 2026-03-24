@@ -1,9 +1,10 @@
 /**
  * Flujo: Onboarding y Soporte Central (número superadmin)
  * Maneja: nuevos clientes, soporte a existentes, demo inmediata
+ * 
+ * Referencia: BENDERAND_CONFIG_INDUSTRIAS.md para presets de industria
+ * Regla crítica: NUNCA recrear credenciales de cliente existente
  */
-
-import { tenantResolver } from '../../services/tenant-resolver.service.js';
 
 export const handleCentralOnboardingFlow = async ({ customerPhone, message, classification, testMode }) => {
     const { intencion, datos_extraer } = classification;
@@ -18,13 +19,10 @@ export const handleCentralOnboardingFlow = async ({ customerPhone, message, clas
         case 'onboarding':
         case 'demo':
             return handleNewCustomerOnboarding({ customerPhone, message, classification, testMode });
-
         case 'info':
             return handleCentralInfo({ message });
-
         case 'soporte':
             return handleCentralSupport({ customerPhone, message });
-
         default:
             return handleOnboardingWelcome({ customerPhone });
     }
@@ -37,8 +35,6 @@ const handleOnboardingWelcome = (customerPhone) => {
 };
 
 const handleExistingCustomerSupport = async ({ customerPhone, message, datos_extraer }) => {
-    // === REGLA CRÍTICA: NUNCA recrear credenciales ===
-
     const rut = datos_extraer.rut;
 
     if (!rut) {
@@ -47,9 +43,7 @@ const handleExistingCustomerSupport = async ({ customerPhone, message, datos_ext
         };
     }
 
-    // TODO: Consultar ERP para verificar existencia del cliente
-    // Por ahora, redirigir al flujo de recuperación del ERP
-
+    // === REGLA CRÍTICA: Redirigir a recuperación oficial, NUNCA recrear ===
     return {
         reply: `✅ *Te reconocemos, ${datos_extraer.nombre || 'cliente'}*\n\nPara recuperar tu acceso de forma segura:\n\n🔗 Visita: https://app.benderand.cl/auth/recuperar\n📧 O revisa tu email registrado para el enlace de recuperación\n\n⚠️ *Importante:* Por seguridad, no podemos generar nuevas contraseñas por WhatsApp. Usa el enlace oficial para restablecer tu acceso.\n\n¿Necesitas ayuda con algo más?`
     };
@@ -59,29 +53,24 @@ const handleNewCustomerOnboarding = async ({ customerPhone, message, classificat
     const { datos_extraer } = classification;
     const industria = datos_extraer.industria;
 
-    // Si ya tenemos industria, saltar a captura de datos básicos
     if (industria) {
         return handleCaptureBasicData({ customerPhone, industria, testMode });
     }
 
-    // Mostrar selector de industria
+    // Selector de industria - basado en BENDERAND_CONFIG_INDUSTRIAS.md
     return {
         reply: `🚀 *¡Excelente! Vamos a crear tu demo*\n\nPrimero, ¿a qué te dedicas?\n\n👨‍⚕️ *PROFESIONALES*\n1. Médico / Clínica\n2. Dentista\n3. Abogado / Legal\n4. Psicólogo / Terapeuta\n5. Gasfíter / Técnico\n6. Otro profesional\n\n🏢 *NEGOCIOS*\n7. Abarrotes / Retail\n8. Ferretería\n9. Restaurante / Delivery\n10. Motel / Hospedaje\n11. Canchas deportivas\n12. Otro negocio\n\n💡 *Responde con el número de tu opción:*`
     };
 };
 
 const handleCaptureBasicData = ({ customerPhone, industria, testMode }) => {
-    // Mapeo de opción a industria
+    // Mapeo de opción a industria key (ver BENDERAND_CONFIG_INDUSTRIAS.md)
     const industriaMap = {
         '1': 'medico', '2': 'dentista', '3': 'legal', '4': 'psicologo', '5': 'gasfiter',
         '7': 'abarrotes', '8': 'ferreteria', '9': 'restaurante', '10': 'motel', '11': 'canchas'
     };
 
     const industriaKey = industriaMap[industria] || industria;
-
-    // === DEMO INMEDIATA: Crear tenant y credenciales ===
-    // En modo test, simular creación; en producción, llamar al ERP
-
     const demoSlug = `demo-${industriaKey}-${Date.now().toString().slice(-4)}`;
     const demoUrl = `https://${demoSlug}.benderand.cl`;
     const demoUser = `admin@${demoSlug}.cl`;
@@ -93,7 +82,6 @@ const handleCaptureBasicData = ({ customerPhone, industria, testMode }) => {
             slug: demoSlug,
             url: demoUrl,
             user: demoUser,
-            // password: demoPass // No retornar password en logs
             industry: industriaKey,
             trial_days: 30,
             test_mode: !!testMode?.active
@@ -113,7 +101,6 @@ const handleCentralSupport = ({ customerPhone, message }) => {
     };
 };
 
-// Helper: Generar contraseña segura
 const generateSecurePassword = (length = 12) => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
     let password = '';

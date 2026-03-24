@@ -79,14 +79,76 @@ export const handleWhatsAppWebhook = async (req, res) => {
       };
     }
 
-    // === PASO 4: Retornar respuesta ===
+    // === ENRUTAMIENTO INTELIGENTE — INSERTAR DENTRO DEL HANDLER EXISTENTE ===
+    // (Después de obtener classification y antes de generar reply)
+
+    const { tenantResolver } = await import('../services/tenant-resolver.service.js');
+
+    // Resolver tenant si el número destino no es central
+    let tenantData = null;
+    if (req.context?.isTenantNumber && classification?.perfil !== 'onboard') {
+      tenantData = await tenantResolver.findByPhone(req.context.to);
+
+      if (!tenantData) {
+        // Número no registrado como tenant → respuesta fallback
+        return res.status(200).json({
+          status: 'ok',
+          reply: 'Gracias por escribir. Este número no está configurado para recibir mensajes. ¿Necesitas ayuda con BenderAnd? Escribe al número central.',
+          meta: { classification, test_mode: !!req.testMode?.active }
+        });
+      }
+    }
+
+    // === SELECCIÓN DE FLUJO POR PERFIL ===
+    let flowHandler;
+    if (classification?.perfil === 'tenant' && tenantData) {
+      // Importar flujo tenant-customer dinámicamente
+      const { handleTenantCustomerFlow } = await import('../flows/tenant-customer/index.js');
+      flowHandler = handleTenantCustomerFlow;
+    }
+    else if (classification?.perfil === 'onboard' || req.context?.isCentralNumber) {
+      // Importar flujo central-onboarding dinámicamente
+      const { handleCentralOnboardingFlow } = await import('../flows/central-onboarding/index.js');
+      flowHandler = handleCentralOnboardingFlow;
+    }
+    else if (classification?.perfil === 'cliente' && tenantData) {
+      // Cliente de tenant
+      const { handleTenantCustomerFlow } = await import('../flows/tenant-customer/index.js');
+      flowHandler = handleTenantCustomerFlow;
+    }
+
+    // Ejecutar flujo si existe, sino fallback
+    let response;
+    if (flowHandler && tenantData) {
+      response = await flowHandler({
+        tenant: tenantData,
+        customerPhone: req.context?.from,
+        message: req.context?.body,
+        classification,
+        testMode: req.testMode
+      });
+    } else if (flowHandler) {
+      response = await flowHandler({
+        customerPhone: req.context?.from,
+        message: req.context?.body,
+        classification,
+        testMode: req.testMode
+      });
+    } else {
+      // Fallback: preguntar contexto
+      response = {
+        reply: `Hola 👋 Para ayudarte mejor, ¿me cuentas si eres:\n\n1️⃣ Cliente de un negocio\n2️⃣ Dueño de un negocio\n3️⃣ Quieres probar BenderAnd\n\nResponde con el número.`
+      };
+    }
+
+    // Retornar respuesta con meta
     return res.status(200).json({
       status: 'ok',
       ...response,
-      metadata: {
+      meta: {
         classification,
         tenant_uuid: tenantData?.uuid,
-        test_mode: !!testMode?.active
+        test_mode: !!req.testMode?.active
       }
     });
 

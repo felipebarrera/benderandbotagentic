@@ -32,7 +32,8 @@ export const config = {
     token: process.env.WHATSAPP_TOKEN,
     phoneId: process.env.WHATSAPP_PHONE_ID,
     verifyToken: process.env.WHATSAPP_VERIFY_TOKEN,
-    appSecret: process.env.WHATSAPP_APP_SECRET
+    appSecret: process.env.WHATSAPP_APP_SECRET,
+    centralNumber: process.env.WHATSAPP_CENTRAL_NUMBER || ""
   },
   llm: {
     provider:    process.env.LLM_PROVIDER    || 'ollama',

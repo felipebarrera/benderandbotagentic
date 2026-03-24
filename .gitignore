@@ -1,7 +1,98 @@
+# ========== NODE.JS ==========
 node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+
+# ========== ENTORNO Y SECRETOS ==========
 .env
-.env.*
-*.log
-coverage/
+.env.local
+.env.*.local
+.env.production
+.env.staging
+*.key
+*.pem
+*.crt
+.secrets
+credentials.json
+serviceAccount.json
+
+# ========== BUILD Y DISTRIBUCIÓN ==========
 dist/
+build/
+out/
+*.min.js
+*.min.css
+dashboard/dist/
+
+# ========== LOGS ==========
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# ========== IDE Y EDITOR ==========
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
 .DS_Store
+Thumbs.db
+
+# ========== TUS REQUISITOS PERSONALES ==========
+
+# ❌ Markdown (descomenta README si lo quieres)
+*.md
+!README.md
+
+# ❌ Docker
+Dockerfile
+docker-compose.yml
+docker-compose.*.yml
+.docker/
+.dockerignore
+docker/
+infra/certbot/
+
+# ❌ Specs / Tests
+specs/
+spec/
+tests/
+__tests__/
+*.test.js
+*.spec.js
+coverage/
+.nyc_output/
+
+# ❌ EditorConfig
+.editorconfig
+
+# ❌ Config (src/config - ajusta si necesitas subir algo)
+src/config/*.env
+src/config/secrets.*
+src/config/private.*
+# src/config/  # <--- Descomenta si quieres ignorar TODA la carpeta config
+
+# ❌ Database (Prisma mantiene migrations, ignora lo demás)
+database/
+vendor/
+public/
+prisma/*.db
+prisma/*.db-journal
+prisma/query-engine-*
+prisma/migration_lock.toml
+
+# ========== CARPETAS PERSONALES / IA ==========
+.gemini/
+.planning/
+.memory/
+tmp/
+temp/
+.cache/
+
+# ========== WORKER Y SCRIPTS ==========
+worker/temp/
+scripts/temp/
+*.pid

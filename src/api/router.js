@@ -11,6 +11,7 @@ import { handoverRouter } from './handover.js';
 import { telegramWebhookRouter } from './telegram-webhook.js';
 import superadminRouter from './superadmin.js';
 import { botConfigRouter } from './bot-config.js';
+import { captacionRouter } from './captacion.js';
 
 export const apiRouter = Router();
 
@@ -27,5 +28,6 @@ apiRouter.use(dashboardRouter);
 apiRouter.use(queueRouter);
 apiRouter.use(handoverRouter);
 apiRouter.use('/superadmin', superadminRouter);
+apiRouter.use('/captacion', captacionRouter);
 
 export default apiRouter;

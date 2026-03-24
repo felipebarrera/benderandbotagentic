@@ -120,3 +120,66 @@ model ColaEspera {
 
   @@map("cola_espera")
 }
+
+model Prospecto {
+  id              Int       @id @default(autoincrement())
+  canal           String    // 'whatsapp' | 'telegram'
+  canalId         String    // phone o telegram_id
+  nombre          String?
+  perfil          String?   // 'profesional' | 'negocio' | 'emprendedor' | 'referido'
+  rubroDetectado  String?
+  estado          String    @default("nuevo")
+  // nuevo | calculadora | demo | conversion | convertido | perdido
+  refTenantSlug   String?   // slug del tenant que lo refirió
+  datosJson       Json?     // respuestas del flujo
+  mrrCalculado    Int?      // ingreso estimado en CLP
+  createdAt       DateTime  @default(now())
+  ultimoMensaje   DateTime?
+  convertidoAt    DateTime?
+  tenantSlug      String?   // si ya convirtió
+  conversaciones  ConversacionCaptacion[]
+
+  @@map("prospectos")
+}
+
+model ConversacionCaptacion {
+  id           Int       @id @default(autoincrement())
+  prospectoId  Int
+  prospecto    Prospecto @relation(fields: [prospectoId], references: [id])
+  canal        String
+  rol          String    // 'bot' | 'user'
+  contenido    String
+  intencion    String?
+  timestamp    DateTime  @default(now())
+
+  @@map("conversaciones_captacion")
+}
+
+model Referido {
+  id             Int       @id @default(autoincrement())
+  referidorSlug  String    // tenant que refirió
+  prospectoId    Int
+  estado         String    @default("pendiente")
+  // pendiente | convertido | expirado
+  mesesGanados   Int       @default(0)
+  createdAt      DateTime  @default(now())
+  convertidoAt   DateTime?
+
+  @@map("referidos")
+}
+
+model TenantNivel {
+  id              Int       @id @default(autoincrement())
+  tenantSlug      String    @unique
+  nivelActual     Int       @default(1)
+  metaVentasMes   Int       // CLP, calculado por rubro al onboardear
+  ventasMes1      Int       @default(0)
+  ventasMes2      Int       @default(0)
+  ventasMes3      Int       @default(0)
+  mesesEnMeta     Int       @default(0)
+  logrosJson      Json      @default("[]")
+  updatedAt       DateTime  @updatedAt
+
+  @@map("tenants_nivel")
+}
+

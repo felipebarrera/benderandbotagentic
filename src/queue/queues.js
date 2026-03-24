@@ -39,6 +39,17 @@ export const deadLetterQueue = new Queue('dead-letter', {
     }
 });
 
+export const captacionQueue = new Queue('captacion-processing', {
+    connection,
+    defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 1000 },
+        removeOnComplete: { count: 1000 },
+        removeOnFail: false
+    }
+});
+
+
 // DLQ listener — when a message job exhausts all retries, move to dead letter
 messageQueue.on('failed', async (job, err) => {
     if (job && job.attemptsMade >= job.opts.attempts) {

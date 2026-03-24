@@ -86,6 +86,7 @@ prisma/migration_lock.toml
 
 # ========== CARPETAS PERSONALES / IA ==========
 .gemini/
+docs/
 .planning/
 .memory/
 tmp/

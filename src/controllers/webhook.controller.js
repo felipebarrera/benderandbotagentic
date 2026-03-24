@@ -1,6 +1,6 @@
 /**
  * Controlador principal de webhook WhatsApp
- * Implementa enrutamiento inteligente por tipo de número y clasificación de intención
+ * Versión con timeouts y fallback garantizado
  */
 
 import { intentClassifier } from '../services/intent-classifier.service.js';
@@ -8,210 +8,148 @@ import { tenantResolver } from '../services/tenant-resolver.service.js';
 import { handleTenantCustomerFlow } from '../flows/tenant-customer/index.js';
 import { handleCentralOnboardingFlow } from '../flows/central-onboarding/index.js';
 
+const RESPONSE_TIMEOUT_MS = 10000; // 10 segundos máximo para toda la request
+
 export const handleWhatsAppWebhook = async (req, res) => {
-  try {
-    const { body, context, testMode } = req;
+  const requestStart = Date.now();
 
-    // === PASO 1: Clasificar intención ===
-    const classification = await intentClassifier.classify({
-      message: context.body,
-      context: {
-        isCentralNumber: context.isCentralNumber,
-        isTenantNumber: context.isTenantNumber,
-        from: context.from,
-        to: context.to
-      },
-      testFlowType: testMode?.flowType
-    });
+  // Timeout global para la request
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('Request timeout')), RESPONSE_TIMEOUT_MS);
+  });
 
-    console.log(`[WEBHOOK] Clasificación: ${classification.perfil}/${classification.intencion} (conf: ${classification.confianza})`);
+  const mainLogic = async () => {
+    try {
+      console.log(`[WEBHOOK] Request iniciada`, {
+        from: req.context?.from,
+        to: req.context?.to,
+        testMode: req.testMode?.active,
+        path: req.path
+      });
 
-    // === PASO 2: Resolver tenant si aplica ===
-    let tenantData = null;
-    if (context.isTenantNumber && classification.perfil !== 'onboard') {
-      tenantData = await tenantResolver.findByPhone(context.to);
-      if (!tenantData) {
-        console.warn(`[WEBHOOK] Número ${context.to} no registrado como tenant`);
-        // Fallback: tratar como número desconocido
-        return res.status(200).json({
-          status: 'ok',
-          reply: 'Gracias por escribir. Este número no está configurado para recibir mensajes. ¿Necesitas ayuda con BenderAnd? Escribe al número central.'
+      const { body, context, testMode } = req;
+
+      // === PASO 1: Clasificar intención ===
+      console.log('[WEBHOOK] Iniciando clasificación...');
+
+      let classification;
+      try {
+        classification = await intentClassifier.classify({
+          message: context.body,
+          context: {
+            isCentralNumber: context.isCentralNumber,
+            isTenantNumber: context.isTenantNumber,
+            from: context.from,
+            to: context.to
+          },
+          testFlowType: testMode?.flowType
         });
-      }
-    }
-
-    // === PASO 3: Enrutar al flujo correspondiente ===
-    let response;
-
-    if (classification.perfil === 'tenant' && tenantData) {
-      // Flujo: Bot de Atención al Cliente del Tenant
-      response = await handleTenantCustomerFlow({
-        tenant: tenantData,
-        customerPhone: context.from,
-        message: context.body,
-        classification,
-        testMode
-      });
-
-    } else if (classification.perfil === 'onboard' || context.isCentralNumber) {
-      // Flujo: Onboarding / Soporte Central
-      response = await handleCentralOnboardingFlow({
-        customerPhone: context.from,
-        message: context.body,
-        classification,
-        testMode
-      });
-
-    } else if (classification.perfil === 'cliente' && tenantData) {
-      // Cliente de tenant (caso genérico)
-      response = await handleTenantCustomerFlow({
-        tenant: tenantData,
-        customerPhone: context.from,
-        message: context.body,
-        classification,
-        testMode
-      });
-
-    } else {
-      // Fallback: preguntar contexto
-      response = {
-        reply: `Hola 👋 Para ayudarte mejor, ¿me cuentas si eres:\n\n1️⃣ Cliente de un negocio\n2️⃣ Dueño de un negocio\n3️⃣ Quieres probar BenderAnd\n\nResponde con el número.`
-      };
-    }
-
-    // === ENRUTAMIENTO INTELIGENTE — INSERTAR DENTRO DEL HANDLER EXISTENTE ===
-    // (Después de obtener classification y antes de generar reply)
-
-    const { tenantResolver } = await import('../services/tenant-resolver.service.js');
-
-    // Resolver tenant si el número destino no es central
-    let tenantData = null;
-    if (req.context?.isTenantNumber && classification?.perfil !== 'onboard') {
-      tenantData = await tenantResolver.findByPhone(req.context.to);
-
-      if (!tenantData) {
-        // Número no registrado como tenant → respuesta fallback
-        return res.status(200).json({
-          status: 'ok',
-          reply: 'Gracias por escribir. Este número no está configurado para recibir mensajes. ¿Necesitas ayuda con BenderAnd? Escribe al número central.',
-          meta: { classification, test_mode: !!req.testMode?.active }
-        });
-      }
-    }
-
-    // === SELECCIÓN DE FLUJO POR PERFIL ===
-    let flowHandler;
-    if (classification?.perfil === 'tenant' && tenantData) {
-      // Importar flujo tenant-customer dinámicamente
-      const { handleTenantCustomerFlow } = await import('../flows/tenant-customer/index.js');
-      flowHandler = handleTenantCustomerFlow;
-    }
-    else if (classification?.perfil === 'onboard' || req.context?.isCentralNumber) {
-      // Importar flujo central-onboarding dinámicamente
-      const { handleCentralOnboardingFlow } = await import('../flows/central-onboarding/index.js');
-      flowHandler = handleCentralOnboardingFlow;
-    }
-    else if (classification?.perfil === 'cliente' && tenantData) {
-      // Cliente de tenant
-      const { handleTenantCustomerFlow } = await import('../flows/tenant-customer/index.js');
-      flowHandler = handleTenantCustomerFlow;
-    }
-
-    // Ejecutar flujo si existe, sino fallback
-    let response;
-    if (flowHandler && tenantData) {
-      response = await flowHandler({
-        tenant: tenantData,
-        customerPhone: req.context?.from,
-        message: req.context?.body,
-        classification,
-        testMode: req.testMode
-      });
-    } else if (flowHandler) {
-      response = await flowHandler({
-        customerPhone: req.context?.from,
-        message: req.context?.body,
-        classification,
-        testMode: req.testMode
-      });
-    } else {
-      // Fallback: preguntar contexto
-      response = {
-        reply: `Hola 👋 Para ayudarte mejor, ¿me cuentas si eres:\n\n1️⃣ Cliente de un negocio\n2️⃣ Dueño de un negocio\n3️⃣ Quieres probar BenderAnd\n\nResponde con el número.`
-      };
-    }
-
-    // Retornar respuesta con meta
-    return res.status(200).json({
-      status: 'ok',
-      ...response,
-      meta: {
-        classification,
-        tenant_uuid: tenantData?.uuid,
-        test_mode: !!req.testMode?.active
-      }
-    });
-
-  } catch (error) {
-    console.error('[WEBHOOK] Error crítico:', error);
-    return res.status(500).json({
-      status: 'error',
-      error: 'Error procesando mensaje',
-      message: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-  /**
- * Función de enrutamiento inteligente - integrar en handleWhatsAppWebhook existente
- */
-  const routeMessage = async ({ context, classification, testMode }) => {
-    const { tenantResolver } = await import('../services/tenant-resolver.service.js');
-    const { handleTenantCustomerFlow } = await import('../flows/tenant-customer/index.js');
-    const { handleCentralOnboardingFlow } = await import('../flows/central-onboarding/index.js');
-
-    // Resolver tenant si aplica
-    let tenantData = null;
-    if (context.isTenantNumber && classification.perfil !== 'onboard') {
-      tenantData = await tenantResolver.findByPhone(context.to);
-      if (!tenantData) {
-        return {
-          reply: 'Gracias por escribir. Este número no está configurado para recibir mensajes. ¿Necesitas ayuda con BenderAnd? Escribe al número central.'
+        console.log(`[WEBHOOK] Clasificación completada: ${classification.perfil}/${classification.intencion}`);
+      } catch (classifyError) {
+        console.error('[WEBHOOK] Error en clasificación:', classifyError.message);
+        classification = {
+          perfil: testMode?.flowType || (context.isCentralNumber ? 'onboard' : 'cliente'),
+          intencion: 'info',
+          confianza: 0.3,
+          datos_extraer: {},
+          fallback: true,
+          error: classifyError.message
         };
       }
-    }
 
-    // Enrutar por perfil clasificado
-    if (classification.perfil === 'tenant' && tenantData) {
-      return await handleTenantCustomerFlow({
-        tenant: tenantData,
-        customerPhone: context.from,
-        message: context.body,
-        classification,
-        testMode
-      });
-    }
+      // === PASO 2: Resolver tenant si aplica ===
+      let tenantData = null;
+      if (context.isTenantNumber && classification.perfil !== 'onboard') {
+        try {
+          // Timeout de 3 segundos para resolver tenant
+          tenantData = await Promise.race([
+            tenantResolver.findByPhone(context.to),
+            new Promise((resolve) => setTimeout(() => resolve(null), 3000))
+          ]);
+        } catch (err) {
+          console.warn('[WEBHOOK] Tenant resolver falló:', err.message);
+        }
 
-    if (classification.perfil === 'onboard' || context.isCentralNumber) {
-      return await handleCentralOnboardingFlow({
-        customerPhone: context.from,
-        message: context.body,
-        classification,
-        testMode
-      });
-    }
+        if (!tenantData) {
+          console.warn(`[WEBHOOK] Número ${context.to} no registrado como tenant`);
+          return {
+            status: 'ok',
+            reply: 'Gracias por escribir. Este número no está configurado para recibir mensajes. ¿Necesitas ayuda con BenderAnd? Escribe al número central.',
+            meta: { classification, test_mode: !!testMode?.active }
+          };
+        }
+      }
 
-    if (classification.perfil === 'cliente' && tenantData) {
-      return await handleTenantCustomerFlow({
-        tenant: tenantData,
-        customerPhone: context.from,
-        message: context.body,
-        classification,
-        testMode
-      });
-    }
+      // === PASO 3: Enrutar al flujo correspondiente ===
+      let response;
+      try {
+        if (classification.perfil === 'tenant' && tenantData) {
+          response = await handleTenantCustomerFlow({
+            tenant: tenantData,
+            customerPhone: context.from,
+            message: context.body,
+            classification,
+            testMode
+          });
+        } else if (classification.perfil === 'onboard' || context.isCentralNumber) {
+          response = await handleCentralOnboardingFlow({
+            customerPhone: context.from,
+            message: context.body,
+            classification,
+            testMode
+          });
+        } else if (classification.perfil === 'cliente' && tenantData) {
+          response = await handleTenantCustomerFlow({
+            tenant: tenantData,
+            customerPhone: context.from,
+            message: context.body,
+            classification,
+            testMode
+          });
+        } else {
+          response = {
+            reply: `Hola 👋 Para ayudarte mejor, ¿me cuentas si eres:\n\n1️⃣ Cliente de un negocio\n2️⃣ Dueño de un negocio\n3️⃣ Quieres probar BenderAnd\n\nResponde con el número.`
+          };
+        }
+      } catch (flowError) {
+        console.error('[WEBHOOK] Error en flujo:', flowError);
+        response = {
+          reply: '⚠️ Hubo un error procesando tu mensaje. Por favor intenta nuevamente.'
+        };
+      }
 
-    // Fallback: preguntar contexto
-    return {
-      reply: `Hola 👋 Para ayudarte mejor, ¿me cuentas si eres:\n\n1️⃣ Cliente de un negocio\n2️⃣ Dueño de un negocio\n3️⃣ Quieres probar BenderAnd\n\nResponde con el número.`
-    };
+      // === PASO 4: Retornar respuesta ===
+      return {
+        status: 'ok',
+        ...response,
+        meta: {
+          classification,
+          tenant_uuid: tenantData?.uuid,
+          test_mode: !!testMode?.active,
+          processing_time_ms: Date.now() - requestStart
+        }
+      };
+
+    } catch (error) {
+      console.error('[WEBHOOK] Error crítico:', error);
+      return {
+        status: 'error',
+        reply: '⚠️ Error interno. Intenta nuevamente.',
+        meta: { error: process.env.NODE_ENV === 'development' ? error.message : undefined }
+      };
+    }
   };
+
+  // Ejecutar con timeout global
+  try {
+    const result = await Promise.race([mainLogic(), timeoutPromise]);
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error('[WEBHOOK] Timeout o error fatal:', error.message);
+    return res.status(500).json({
+      status: 'error',
+      reply: '⚠️ Tiempo de respuesta excedido. Intenta nuevamente.',
+      meta: { error: error.message }
+    });
+  }
 };

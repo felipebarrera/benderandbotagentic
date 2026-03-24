@@ -19,28 +19,35 @@ import './webhook/processor.js';
 import '../worker/index.js';
 
 const app = express();
+
+// === 1. SECURITY Y CORS PRIMERO ===
 app.use(helmet());
 app.use(cors({
     origin: process.env.NODE_ENV === 'production' ? ['https://webinc.cl'] : '*'
 }));
 
-// Webhook routes (before JSON body parser for HMAC)
-app.use(healthRouter);
-app.use('/webhook', webhookRouter);
-
-app.use(testModeMiddleware);
-app.use(contextExtractorMiddleware);
-// JSON body parser
+// === 2. JSON PARSER INMEDIATO ===
 app.use(express.json({ limit: '10mb' }));
-app.use(telegramWebhookRouter);
 
-// API routes (centralized router)
+// === 3. RATE LIMITING PARA APIS PÚBLICAS ===
 app.use('/api', apiLimiter);
+
+// === 4. MIDDLEWARE DE TEST MODE (puede ser global) ===
+app.use(testModeMiddleware);
+
+// === 5. WEBHOOK ROUTES CON SUS MIDDLEWARES ESPECÍFICOS ===
+// contextExtractorMiddleware SOLO aplica a webhooks (WhatsApp/Telegram)
+app.use(healthRouter);
+app.use('/webhook', contextExtractorMiddleware);
+app.use('/webhook', webhookRouter);
+app.use('/webhook', telegramWebhookRouter);
+
+// === 6. API ROUTES CENTRALIZADAS (sin context extractor) ===
 app.use('/api', apiRouter);
+app.use('/api/handover', handoverRouter);
 
-// Error handler
+// === 7. ERROR HANDLER AL FINAL ===
 app.use(errorHandler);
-
 const server = app.listen(config.api.port, () => {
     logger.info(`🚀 Moteland WA API corriendo en puerto ${config.api.port}`);
 });
